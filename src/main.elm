@@ -1,42 +1,82 @@
-module Main exposing (main)
-
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html, text, pre)
+import Http
+
+
+
+-- MAIN
+
 
 main =
-  Browser.sandbox { init = init, update = update, view = view }
+  Browser.element
+    { init = init
+    , update = update
+    , subscriptions = subscriptions
+    , view = view
+    }
+
 
 
 -- MODEL
 
-type alias Model = Int
 
-init : Model
-init =
-  0
+type Model
+  = Failure
+  | Loading
+  | Success String
+
+
+init : () -> (Model, Cmd Msg)
+init _ =
+  ( Loading
+  , Http.get
+      { url = "https://elm-lang.org/assets/public-opinion.txt"
+      , expect = Http.expectString GotText
+      }
+  )
+
 
 
 -- UPDATE
 
-type Msg = Increment | Decrement
 
-update : Msg -> Model -> Model
+type Msg
+  = GotText (Result Http.Error String)
+
+
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Increment ->
-      model + 1
+    GotText result ->
+      case result of
+        Ok fullText ->
+          (Success fullText, Cmd.none)
 
-    Decrement ->
-      model - 1
+        Err _ ->
+          (Failure, Cmd.none)
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.none
+
 
 
 -- VIEW
 
+
 view : Model -> Html Msg
 view model =
-  div []
-    [ button [ onClick Decrement ] [ text "-" ]
-    , div [] [ text (String.fromInt model) ]
-    , button [ onClick Increment ] [ text "+" ]
-    ]
+  case model of
+    Failure ->
+      text "I was unable to load your book."
+
+    Loading ->
+      text "Loading..."
+
+    Success fullText ->
+      pre [] [ text fullText ]
